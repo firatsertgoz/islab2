@@ -1,0 +1,25 @@
+{
+  "name": "islab2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "RESTful.js",
+  "dependencies": {
+    "express": "^4.16.2",
+    "neo4j": "^2.0.0-RC2",
+    "neo4j-driver": "^1.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/firatsertgoz/islab2.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/firatsertgoz/islab2/issues"
+  },
+  "homepage": "https://github.com/firatsertgoz/islab2#readme"
+}
