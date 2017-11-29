@@ -58,7 +58,7 @@ exports.getallmovies = function(req, res,next) {
   }
   exports.getalldirectors = function(req, res,next) {
     db.cypher({
-        query: 'MATCH p=()-[r:DIRECTED]->() RETURN p',
+        query: 'MATCH (n:Person)-[:DIRECTED]->(movies) RETURN n',
     }, function(err, results){
         if (err) {
             console.error('Error finding directors:', err);
@@ -71,7 +71,7 @@ exports.getallmovies = function(req, res,next) {
   };
   exports.getallactors = function(req, res,next) {
     db.cypher({
-        query: 'MATCH p=()-[r:ACTED_IN]->() RETURN p',
+        query: 'MATCH (n:Person)-[:ACTED_IN]->(movies) RETURN n',
     }, function(err, results){
         var result = results[0];
         if (err) {
