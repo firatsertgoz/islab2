@@ -1,7 +1,6 @@
+
 var neo4j = require('neo4j');
 var db = new neo4j.GraphDatabase(process.env['GRAPHENEDB_URL']);
-
-var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass));
 
 var session = driver.session();
 
