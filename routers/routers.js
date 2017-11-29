@@ -7,11 +7,11 @@ module.exports = function(app) {
       //.post(restAPI.createmovie)
       //.post(restAPI.getmoviebydirector)
       
-    app.route('/movies:actor')
-      .get(restAPI.getmoviebyactor)
+    app.route('/moviesbyactor')
+      .post(restAPI.getmoviebyactor)
 
-    app.route('/movies:director')
-      .get(restAPI.getmoviebydirector)
+    app.route('/moviesbydirector')
+      .post(restAPI.getmoviebydirector)
 
     app.route('/director')
        .get(restAPI.getalldirectors)
