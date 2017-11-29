@@ -1,6 +1,6 @@
 
 var neo4j = require('neo4j');
-var db = new neo4j.GraphDatabase(process.env['GRAPHENEDB_URL']);
+var db = new neo4j.GraphDatabase('https://app81941791-r8YDgf:b.zve0B0Fxhfjf.duwTenySPVnEBoUi@hobby-gkdmkfkgjdajgbkemcpnehal.dbs.graphenedb.com:24780');
 
 
 
@@ -9,11 +9,14 @@ exports.getallmovies = function(req, res) {
     db.cypher({
         query: 'MATCH (n:Movie) RETURN n',
     }, function(err, results){
-        var result = results[0];
+        var result = results;
         if (err) {
             console.error('Error finding movies to database:', err);
         } else {
-            console.log('Returned the movies: ', result);
+            results.forEach(function(result) {
+                console.log('Returned the movies: ', results);
+            }, this);
+            
         }
     });
   };
