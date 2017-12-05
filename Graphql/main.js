@@ -14,7 +14,6 @@ var session = driver.session();
 
 var qltools = require('graphql-tools');
 
-// Construct a schema, using GraphQL schema language
 var typeDefs = ` 
 
 type Person{
@@ -107,7 +106,7 @@ type Query {
     })
   });
 
-// // This class implements the Person GraphQL type
+
 // class Person {
 //   constructor(id, name, {born}) {
 //     this.id = id;
@@ -158,9 +157,6 @@ var root = {
   },
   Person: {
     acted(person) {
-      // we define similarity to be movies with overlapping genres, we could use a more complex
-      // Cypher query here to use collaborative filtering based on user ratings, see Recommendations
-      // Neo4j Sandbox for more complex examples
       let session = driver.session(),
           params = {name: person.name},
           query = [
@@ -173,8 +169,6 @@ var root = {
         .then( result => { return result.records.map(record => { return record.get("movie").properties })})
     },
     reviewed(movie) {
-      // Movie genres are represented as relationships in Neo4j so we need to query the database
-      // to resolve genres
       let session = driver.session(),
           params = {movieId: movie.name},
           query = `MATCH (p:Person)-[:REVIEWED]-(movies) RETURN movies`
