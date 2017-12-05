@@ -1,4 +1,4 @@
-
+var _ = require('lodash');
 var express = require('express');
 var graphqlHTTP = require('express-graphql');
 var {
@@ -12,19 +12,23 @@ var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "passwor
 
 var session = driver.session();
 
+var qltools = require('graphql-tools');
+
 // Construct a schema, using GraphQL schema language
-var schema = buildSchema(` 
+var typeDefs = ` 
 
 type Person{
-  id: ID
+  id : ID
   name: String
   born: Int
   acted: [Movie]
-  reviewed:[Movie]
+  produced: [Movie]
+  wrote: [Movie]
+  directed: [Movie]
 }
 
 type Movie {
-  movieId: ID
+  id: ID
   title: String
   year: Int
   cast: [Person]
@@ -32,46 +36,126 @@ type Movie {
 }
 
 type Query {
-    people(subString: String!, limit:Int): [Person]
+    people(subString: String!, limit:Int): Person
     movies(subString: String, limit: Int): [Movie]
     getMovie(id: ID!): Movie
     getPerson(id: ID!): Person
 
   }
-  `);
+  `;
 
-// This class implements the Movie GraphQL type
-class Movie {
-  constructor(movieId, title, {year}) {
-    this.movieId = id;
-    this.title = title;
-    this.year = year;
-    this.cast = cast;
-    this.crew = crew;
-  }
-}
+  var Person = function (_node) {
+    _.extend(this, _node.properties);
+    if (this.id) { 
+      this.id = this.id.toNumber();
+    }
+    if (this.born) {
+      this.born = this.born.toNumber();
+    }
+  };
+  
 
-// This class implements the Person GraphQL type
-class Person {
-  constructor(id, name, {born}) {
-    this.id = id;
-    this.name = name;
-    this.born = born;
-    this.reviewed = reviewed;
-    this.acted = acted;
-    this.wrote = wrote;
-  }
-}
+  var PersonDetails = function (record) {
+    if (record.length) {
+      var result = {};
+      _.extend(result, new Person(record.get('person')));
 
-// The root provides a resolver function for each API endpoint
-// var root = {
-//   movies: () => {
-//     return 'Hello world!';
-//   },
-// };
+      result.directed = _.map(record.get('directed'), record => {
+        if (record.id) {
+          record.id = record.id.toNumber();
+        }
+        return record;
+      });
+      result.produced = _.map(record.get('produced'), record => {
+        if (record.id) {
+          record.id = record.id.toNumber();
+        }
+        return record;
+      });
+      result.wrote = _.map(record.get('wrote'), record => {
+        if (record.id) {
+          record.id = record.id.toNumber();
+        }
+        return record;
+      });
+      result.actedIn = _.map(record.get('acted'), record => {
+        if (record.id) {
+          record.id = record.id.toNumber();
+        }
+        return record;
+      });
+      // result.related = _.map(record.get('related'), record => {
+      //   if (record.id) {
+      //     record.id = record.id.toNumber();
+      //   }
+      //   return record;
+      // });
+      return result;
+    }
+    else {
+      return null;
+    }
+  };
+
+  var MovieType = new GraphQLObjectType({
+    name: 'Movie',
+    fields: () => ({
+      title: { type: GraphQLString },
+      year: {type: Int},
+      cast: {type: GraphQLList(PersonType)},
+      reviewer:{type: GraphQLList(PersonType)}
+    })
+  });
+
+// // This class implements the Person GraphQL type
+// class Person {
+//   constructor(id, name, {born}) {
+//     this.id = id;
+//     this.name = name;
+//     this.born = born;
+//     this.reviewed = reviewed;
+//     this.acted = acted;
+//     this.wrote = wrote;
+//   }
+// }
 
 var root = {
+  movies: (params) => {
+    console.log("you're here now")
+    let query = "MATCH (movie:Movie) WHERE movie.title CONTAINS $subString RETURN movie;"
+    return session.run(query, params).then(result => {return result.records.map(record => {return record.get("movie").properties})
+    console.log(query + "ran with Parameters:" + params)
+      })
+    //session.close();
+  },
 
+  people: (params) => {
+    var query = [
+      'MATCH (person:Person) WHERE person.name CONTAINS $subString',
+      'MATCH (person)-[r:ACTED_IN]->(a:Movie)',
+      'OPTIONAL MATCH (person)-[:DIRECTED]->(d:Movie)',
+      'OPTIONAL MATCH (person)<-[:PRODUCED]->(p:Movie)',
+      'OPTIONAL MATCH (person)<-[:WRITER_OF]->(w:Movie)',
+      'RETURN person,',
+      'collect({ name:d}) AS directed,',
+      'collect({ name:p}) AS produced,',
+      'collect({ name:w}) AS wrote,',
+      'collect (a) AS acted'
+    ].join('\n');
+
+    //let query = "MATCH (people:Person) WHERE people.name CONTAINS $subString RETURN people;"
+    return session
+    .run(query, params)
+    .then(result => {
+      if (!_.isEmpty(result.records)) {
+        return PersonDetails(result.records[0]);
+      }
+      else {
+        //throw {message: 'person not found', status: 404}
+      }
+    });
+      //session.close(); 
+  },
   Person: {
     acted(person) {
       // we define similarity to be movies with overlapping genres, we could use a more complex
@@ -79,10 +163,10 @@ var root = {
       // Neo4j Sandbox for more complex examples
       let session = driver.session(),
           params = {name: person.name},
-          query = `
-          MATCH (p:Person)-[:ACTED_IN]->(movie:Movie) 
-          WHERE p.name CONTAINS $name
-          RETURN movie;`
+          query = [
+                'MATCH (person:Person) WHERE person.name CONTAINS $subString',
+                'MATCH (person)-[r:ACTED_IN]->(a:Movie)'
+              ].join('\n');
           console.log(query);
           
       return session.run(query, params)
@@ -108,44 +192,21 @@ var root = {
     //session.close();
   },
 
-  people: (params) => {
-    let query = "MATCH (people:Person) WHERE people.name CONTAINS $subString RETURN people;"
-    return session.run(query, params).then(result => {return result.records.map(record => {return record.get("people").properties})
-      })
-      //session.close(); 
-  },
+  // people: (params) => {
+  //   let query = "MATCH (people:Person) WHERE people.name CONTAINS $subString RETURN people;"
+  //   return session.run(query, params).then(result => {return result.records.map(record => {return record.get("people").properties})
+  //     })
+  //     //session.close(); 
+  // }
 
   
   
-  // Movie: {
-  //   // the similar field in the Movie type is an array of similar Movies
-  //   similar(movie) {
-  //     // we define similarity to be movies with overlapping genres, we could use a more complex
-  //     // Cypher query here to use collaborative filtering based on user ratings, see Recommendations
-  //     // Neo4j Sandbox for more complex examples
-  //     let session = driver.session(),
-  //         params = {movieId: movie.movieId},
-  //         query = `MATCH (n:Person { name: {actor} })-[:ACTED_IN]-(movies) RETURN movies`
-  //     return session.run(query, params)
-  //       .then( result => { return result.records.map(record => { return record.get("movie").properties })})
-  //   },
-  //   genres(movie) {
-  //     // Movie genres are represented as relationships in Neo4j so we need to query the database
-  //     // to resolve genres
-  //     let session = driver.session(),
-  //         params = {movieId: movie.movieId},
-  //         query = `
-  //           MATCH (m:Movie)-[:IN_GENRE]->(g:Genre)
-  //           WHERE m.movieId = $movieId
-  //           RETURN g.name AS genre;
-  //         `
-  //     return session.run(query, params)
-  //       .then( result => { return result.records.map(record => { return record.get("genre") })})
-  //   }
-  // }
 };
 
-
+const schema = qltools.makeExecutableSchema({
+  typeDefs,
+  root
+});
 
 
 var app = express();
